@@ -7,6 +7,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using AutoRotate.Properties;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 
@@ -16,7 +17,6 @@ namespace AutoRotateWinform
     /*
      * Notify Icon : https://www.codeproject.com/tips/627796/doing-a-notifyicon-program-the-right-way
      * Asynch Task : https://blogs.msdn.microsoft.com/benwilli/2016/06/30/asynchronous-infinite-loops-instead-of-timers/
-     * 
      *
      */
     class AutoRotateContext : ApplicationContext
@@ -36,12 +36,16 @@ namespace AutoRotateWinform
 
         private const string _raspberryPiIp = "http://0.0.0.0/";
 
+        private AboutForm _aboutForm = new AboutForm();
+
         public AutoRotateContext()
         {
             Application.ApplicationExit += new EventHandler(this.OnApplicationExit);
             LoadSettings();
             InitializeComponent();
             _trayIcon.Visible = true;
+            _trayIcon.BalloonTipText = "AutoRotate is running !";
+            _trayIcon.ShowBalloonTip(5000);
         }
 
         public void ARTask() 
@@ -59,23 +63,22 @@ namespace AutoRotateWinform
         public string  GetOrientation()
         {
             string orientation = _client.DownloadString(_raspberryPiIp);
-            if(orientation == "")
+            if (string.IsNullOrEmpty(orientation))
             {
-               GetOrientation();
+                GetOrientation();
             }
-            else
-            {
-                return orientation;
-            }
-            return "Landscape";
+            return orientation;
         }
 
         public void CheckOrientation(string orientation)
         {
-            if (orientation != _orientation)
+            if (!string.IsNullOrEmpty(orientation))
             {
-                _orientation = orientation;
-                SendOrientationKeys(_orientation);
+                if (orientation != _orientation)
+                {
+                    _orientation = orientation;
+                    SendOrientationKeys(_orientation);
+                }
             }
         }
 
@@ -86,6 +89,8 @@ namespace AutoRotateWinform
                 try
                 {
                     SendKeys.SendWait("^%{UP}");
+                    _trayIcon.BalloonTipText = "The shortcut CTRL+ALT+UP has been sent";
+                    _trayIcon.ShowBalloonTip(5000);
                 }
                 catch (Exception e)
                 {
@@ -98,6 +103,8 @@ namespace AutoRotateWinform
                 try
                 {
                     SendKeys.SendWait("^%{LEFT}");
+                    _trayIcon.BalloonTipText = "The shortcut CTRL+ALT+LEFT has been sent";
+                    _trayIcon.ShowBalloonTip(5000);
                 }
                 catch (Exception e)
                 {
@@ -111,12 +118,10 @@ namespace AutoRotateWinform
             _trayIcon = new NotifyIcon
             {
                 BalloonTipIcon = ToolTipIcon.Info,
-                BalloonTipText = "I noticed that you double-clicked me! What can I do for you?",
-                BalloonTipTitle = "You called Master?",
+                BalloonTipTitle = " AutoRotate ",
                 Text = "AutoRotate Rotate the screen with Raspberry Pi",
-                Icon = Properties.Resources.TrayIcon
+                Icon = Resources.TrayIcon
             };
-
             //The icon is added to the project resources.
             //Here I assume that the name of the file is 'TrayIcon.ico'
 
@@ -167,6 +172,17 @@ namespace AutoRotateWinform
 
         }
 
+        public void ToggleAboutForm()
+        {
+            if (_aboutForm.Visible)
+            {
+                _aboutForm.Visible = false;
+            }
+            else
+            {
+                _aboutForm.Visible = true;
+            }
+        }
         public void LoadSettings()
         {
             StreamReader streamreader = new StreamReader(_fileName);
@@ -184,10 +200,6 @@ namespace AutoRotateWinform
         {
             //Cleanup so that the icon will be removed when the application is closed
             _trayIcon.Visible = false;
-        }
-        private void TrayIcon_DoubleClick(object sender, EventArgs e)
-        {
-            _trayIcon.ShowBalloonTip(10000);
         }
         private void StartUpMenuItem_Click(object sender, EventArgs e)
         {
@@ -207,10 +219,13 @@ namespace AutoRotateWinform
                 _settings.Checked = false;
             }
         }
+        private void TrayIcon_DoubleClick(object sender, EventArgs e)
+        {
+            ToggleAboutForm();
+        }
         private void AboutMenuItem_Click(object sender, EventArgs e)
         {
-            Form1 form1 = new Form1();
-            form1.Show();
+            ToggleAboutForm();
         }
         private void CloseMenuItem_Click(object sender, EventArgs e)
         {
